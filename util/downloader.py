@@ -85,12 +85,10 @@ class Downloader(object):
 		return self.input_directory_path
 
 	def derive_filepath(self, country, source_name, filename):
-		split_path = self.input_directory_path.split(os.sep)
-		download_path_parts = split_path + [country, source_name, filename]
-		download_path_parts = [part for part in download_path_parts if part is not None]
-		filepath = os.path.join(*download_path_parts)
-
-		return filepath
+			split_path = self.input_directory_path.split(os.sep)
+			download_path_parts = split_path + [country, source_name, filename]
+			download_path_parts = [part for part in download_path_parts if part is not None]
+			return os.path.join(*download_path_parts)
 
 	def scrape_and_cache(self, url, country, source_name, filename, session=None):
 		"""
@@ -161,11 +159,9 @@ class Downloader(object):
 		return filepath
 
 	def get_opsd_download_url(self, filename, country, source):
-		opsd_url = 'https://data.open-power-system-data.org/renewable_power_plants'
-		folder = 'original_data'
-		opsd_download_url = "/".join([opsd_url, self.version, folder, country, source, filename])
-	
-		return opsd_download_url
+			opsd_url = 'https://data.open-power-system-data.org/renewable_power_plants'
+			folder = 'original_data'
+			return "/".join([opsd_url, self.version, folder, country, source, filename])
 
 	def unzip_and_mark(self, filepath):
 		filename = filepath.split(os.sep)[-1]
@@ -186,35 +182,41 @@ class Downloader(object):
 		return filenames_by_source
 	
 	def get_download_urls(self, country):
-		source_df = self.source_df[self.source_df['country'] == country]
-		geo_url = None
+			source_df = self.source_df[self.source_df['country'] == country]
+			geo_url = None
 
-		if self.download_from == 'original_sources':
-			data_urls = {}
-			# check if there are inactive urls
-			inactive_df = source_df[source_df['active'] == 'no']
-			if not inactive_df.empty:
-				filenames_by_source = self.get_filenames_for_opsd(inactive_df)
-				for source in filenames_by_source:
-					filename = filenames_by_source[source]
-					data_urls.update({source : {'url' : self.get_opsd_download_url(filename, country, source), 'filename' : filename}})
+			if self.download_from == 'original_sources':
+					data_urls = {}
+					# check if there are inactive urls
+					inactive_df = source_df[source_df['active'] == 'no']
+					if not inactive_df.empty:
+							filenames_by_source = self.get_filenames_for_opsd(inactive_df)
+							for source in filenames_by_source:
+									filename = filenames_by_source[source]
+									data_urls[source] = {
+									    'url': self.get_opsd_download_url(filename, country, source),
+									    'filename': filename,
+									}
 
-			active_df = source_df[source_df['active'] == 'yes']
-			urls = active_df[['source', 'url', 'filename', 'download_method']]
-			urls = urls.set_index('source')
-			data_urls.update(urls.to_dict(orient='index'))
+					active_df = source_df[source_df['active'] == 'yes']
+					urls = active_df[['source', 'url', 'filename', 'download_method']]
+					urls = urls.set_index('source')
+					data_urls.update(urls.to_dict(orient='index'))
 
-		elif self.download_from == 'opsd_server':
-			data_urls = {}
-			filenames_by_source = self.get_filenames_for_opsd(source_df)
-			for source in filenames_by_source:
-				filename = filenames_by_source[source]
-				data_urls.update({source : {'url' : self.get_opsd_download_url(filename, country, source), 'filename' : filename}})
-		
-		else:
-			raise ValueError('download_from must be "original_sources" or "opsd_server".')
-		
-		return data_urls
+			elif self.download_from == 'opsd_server':
+					data_urls = {}
+					filenames_by_source = self.get_filenames_for_opsd(source_df)
+					for source in filenames_by_source:
+							filename = filenames_by_source[source]
+							data_urls[source] = {
+							    'url': self.get_opsd_download_url(filename, country, source),
+							    'filename': filename,
+							}
+
+			else:
+					raise ValueError('download_from must be "original_sources" or "opsd_server".')
+
+			return data_urls
 
 	def download_data_for_country(self, country):
 		urls = self.get_download_urls(country)
