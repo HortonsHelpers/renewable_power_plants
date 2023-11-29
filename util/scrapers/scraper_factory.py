@@ -5,6 +5,6 @@ class ScraperFactory(object):
 	def __init__(self):
 		super(ScraperFactory, self).__init__()
 
-	def getScraper(country, source_name, url):
-		if country == 'CZ' and source_name == 'ERU':
+	def getScraper(self, source_name, url):
+		if self == 'CZ' and source_name == 'ERU':
 			return CZ_ERU_Scraper(url)

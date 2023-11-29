@@ -29,15 +29,12 @@ class CZ_ERU_Scraper(Scraper):
 		# Create a fake user agent
 		user_agent = fake_useragent.UserAgent().random
 
-		# Set the header
-		headers = {
+		return {
 			'Host': 'licence.eru.cz',
 			'Origin': 'http://licence.eru.cz',
 			'Referer': 'http://licence.eru.cz/index.php',
-			'User-Agent' : user_agent,
+			'User-Agent': user_agent,
 		}
-
-		return headers
 
 
 	def scrape(self, filepath):
@@ -59,8 +56,10 @@ class CZ_ERU_Scraper(Scraper):
 		self.headers = self.__get_headers()
 
 		# Filter the stations
-		response = self.session.post(self.url + '?action=filter&', data, headers=self.headers)
-		
+		response = self.session.post(
+			f'{self.url}?action=filter&', data, headers=self.headers
+		)
+
 		page = 0
 		links_of_sites = []
 		soup = BeautifulSoup(response.content, 'html.parser')
@@ -75,8 +74,10 @@ class CZ_ERU_Scraper(Scraper):
 		while not self.no_more_pages(soup):
 			# Get the filtered stations
 			roff = page * 30
-			response = self.session.get(self.url + '?roff=' + str(roff), headers=self.headers)
-			
+			response = self.session.get(
+				f'{self.url}?roff={str(roff)}', headers=self.headers
+			)
+
 			soup = BeautifulSoup(response.content, 'html.parser')
 
 			# Extract the links of individual licence holders
@@ -92,7 +93,7 @@ class CZ_ERU_Scraper(Scraper):
 			if len(sites) > 2000:
 				self.flush_to_csv(sites, filepath)
 				sites = []
-		
+
 			page = page + 1
 
 		# flush the remaining sites
@@ -111,15 +112,15 @@ class CZ_ERU_Scraper(Scraper):
 
 				for column in self.header:
 					string = str(site.get(column, ''))
-		
+
 					if ',' in string:
 						if string.endswith('\\'):
 							string = string.replace('\\', '')
-						string = '"' + string + '"'
-						#print(string, column, site['link'])
+						string = f'"{string}"'
+										#print(string, column, site['link'])
 
 					strings.append(string)
-				
+
 				line = ','.join(strings)
 
 				f.write(line + '\n')
@@ -127,18 +128,13 @@ class CZ_ERU_Scraper(Scraper):
 	def no_more_pages(self, soup):
 		next_links = soup.find_all('a', {'class' : 'pager-next'})
 
-		if next_links is not None and len(next_links) > 0:
-			return False
-		else:
-			return True
+		return next_links is None or len(next_links) <= 0
 
 	def extract_links(self, soup):
 		anchors = soup.find_all('a')
 		links = [anchor.get('href') for anchor in anchors]
 		links = [link for link in links if 'detail.php' in link]
-		links = ['http://licence.eru.cz' + link[1:] for link in links]
-
-		return links
+		return [f'http://licence.eru.cz{link[1:]}' for link in links]
 
 	def get_sites_from_the_link(self, link):
 		self.__link = link
@@ -190,12 +186,9 @@ class CZ_ERU_Scraper(Scraper):
 	def clean(self, string):
 		if '--' in string:
 			return ''
-		else:
-			string = string.strip().replace(u'\xa0', ' ').replace('\t', ' ')
-			string = ' '.join(string.split())
-			string = string.replace('\n', ' ')
-
-			return string
+		string = string.strip().replace(u'\xa0', ' ').replace('\t', ' ')
+		string = ' '.join(string.split())
+		return string.replace('\n', ' ')
 
 	def to_float(self, string):
 		string = self.clean(string)
@@ -229,8 +222,6 @@ class CZ_ERU_Scraper(Scraper):
 		return sites
 
 	def extract_general_details(self, main_td):
-		details = {}
-
 		detail_divs = main_td.find_all('div')
 
 		name_div = detail_divs[1]
@@ -238,21 +229,22 @@ class CZ_ERU_Scraper(Scraper):
 
 		site_name = site_name.replace('"', '\\"')
 
-		details['site_name'] = site_name
-		details['site_postcode'] = ''
-		details['site_locality'] = ''
-		details['site_district'] = ''
-		details['site_region'] = ''
-
+		details = {
+			'site_name': site_name,
+			'site_postcode': '',
+			'site_locality': '',
+			'site_district': '',
+			'site_region': '',
+		}
 		if len(detail_divs) >= 3:
 			geo_div = detail_divs[2]
 
 			geo_content = self.clean(geo_div.decode_contents())
 
 			geo_strings = [string.strip() for string in geo_content.split(',')]
-	
+
 			details['site_postcode'], details['site_locality'] = self.extract_postcode_and_locality(geo_strings[0])
-	
+
 			for string in geo_strings[2:]:
 				if 'okres' in string:
 					parts = string.split('okres ')
@@ -274,8 +266,8 @@ class CZ_ERU_Scraper(Scraper):
 
 	def set_megawatts_electric_and_thermal(self, row, details, energy_type):
 		megawatts_electric, megawatts_thermal = self.extract_electric_thermal_megawatts(row)
-		mwe_key = 'megawatts_electric_{}'.format(energy_type)
-		mwt_key = 'megawatts_thermal_{}'.format(energy_type)
+		mwe_key = f'megawatts_electric_{energy_type}'
+		mwt_key = f'megawatts_thermal_{energy_type}'
 		details[mwe_key] = megawatts_electric
 		details[mwt_key] = megawatts_thermal
 
@@ -322,11 +314,6 @@ class CZ_ERU_Scraper(Scraper):
 		return details
 
 	def extract_holder_geodetails(self, details):
-		# Extract information on the licence holder
-
-		# Prepare the dictionary in which the data will be stored
-		licence_holder = {}
-	
 		details = details.split('<br/>')
 		details = [self.clean(detail) for detail in details]
 
@@ -342,7 +329,7 @@ class CZ_ERU_Scraper(Scraper):
 		}
 
 		geo_details_dict = {}
-	
+
 		for j in range(2, len(details)):
 			geo_details = details[j]
 			for key in extractors:
@@ -351,21 +338,18 @@ class CZ_ERU_Scraper(Scraper):
 					geo_details_dict[key] = match.group(1)
 
 
-		licence_holder['holder_address'] = address
-		licence_holder['holder_postcode'] = postcode
-		licence_holder['holder_locality'] = locality
-		licence_holder['holder_district'] = geo_details_dict.get('district', '')
-		licence_holder['holder_region'] = geo_details_dict.get('region', '')
-
-
-		return licence_holder
+		return {
+			'holder_address': address,
+			'holder_postcode': postcode,
+			'holder_locality': locality,
+			'holder_district': geo_details_dict.get('district', ''),
+			'holder_region': geo_details_dict.get('region', ''),
+		}
 
 	def extract_postcode_and_locality(self, string):
 		postcode_prefix = ""
 
 		locality = ''
-		postcode = ''
-
 		for i, x in enumerate(string):
 			if x.isdigit() or x == ' ':
 				if x.isdigit():
@@ -374,7 +358,5 @@ class CZ_ERU_Scraper(Scraper):
 				locality = string[i:]
 				break
 
-		if len(postcode_prefix) == 5:
-			postcode = int(postcode_prefix)
-
+		postcode = int(postcode_prefix) if len(postcode_prefix) == 5 else ''
 		return postcode, locality

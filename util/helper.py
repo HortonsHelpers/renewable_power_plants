@@ -11,9 +11,7 @@ def get_beis_link(UK_page_url):
 	soup = bs4.BeautifulSoup(html, 'html.parser')
 	span = soup.find('span', class_='download')
 	link = span.find('a')
-	url_UK_beis = link['href']
-
-	return url_UK_beis
+	return link['href']
 
 
 def get_markdowns_for_sources(countries_df, sources_df, metadata):
@@ -27,12 +25,13 @@ def get_markdowns_for_sources(countries_df, sources_df, metadata):
 	source_format_without_long_description = "- [{full_name}]({url}) - {short_description}"
 	markdowns = []
 
+	column_row_format = '| {} | {} | {} |\n'
 	for country in countries_df['short_name']:
 		country_row = countries_df.loc[countries_df['short_name'] == country]
-		country_dict = country_row.to_dict(orient='records')[0] 
+		country_dict = country_row.to_dict(orient='records')[0]
 		country_text = country_format.format(**country_dict)
 		if not pd.isna(country_dict["long_description"]) and len(country_dict["long_description"]) > 0:
-			country_text += "\n{}\n".format(country_dict["long_description"])
+			country_text += f'\n{country_dict["long_description"]}\n'
 		#display(country_row)
 		country_sources = sources_df[(sources_df['country'] == country) & (sources_df['file_type'] == 'data')]
 		source_list = []
@@ -46,12 +45,13 @@ def get_markdowns_for_sources(countries_df, sources_df, metadata):
 		source_text = "\n".join(source_list)
 
 		table_text = ''
-		column_row_format = '| {} | {} | {} |\n'
 		for resource in metadata['resources']:
-			name = 'renewable_power_plants_{}'.format(country).lower()
+			name = f'renewable_power_plants_{country}'.lower()
 			if resource['name'] == name:
-				table_text = 'The columns available in the data table provided by OPSD:\n\n'
-				table_text += '| column | type | description |\n|:---|:---|:---|\n'
+				table_text = (
+					'The columns available in the data table provided by OPSD:\n\n'
+					+ '| column | type | description |\n|:---|:---|:---|\n'
+				)
 				fields = resource['schema']['fields']
 				for field in fields:
 					column = field['name']
@@ -60,11 +60,11 @@ def get_markdowns_for_sources(countries_df, sources_df, metadata):
 					column_row = column_row_format.format(column, column_type, column_description)
 					table_text += column_row
 
-	
+
 		markdown_text = country_text + '\n' + source_text + '\n\n' + table_text
 		markdown = Markdown(markdown_text)
 		markdowns += [markdown]
-	
+
 	return markdowns
 
 
@@ -172,11 +172,8 @@ def sweref99tm_latlon_transform(in1, in2=None, rt90=False):
 					   +beta3*sin(6*xi)*cosh(6*eta)+beta4*sin(8*xi)*cosh(8*eta))+FN
 		out2[~ind] = k0*a_hat*(eta+beta1*cos(2*xi)*sinh(2*eta)+beta2*cos(4*xi)*sinh(4*eta)\
 					   +beta3*cos(6*xi)*sinh(6*eta)+beta4*cos(8*xi)*sinh(8*eta))+FE
-			
+
 	if return_matrix:
 		return np.column_stack((out1, out2))
 	else:
-		if len(out1)==1:
-			return out1[0], out2[0]
-		else:
-			return out1, out2
+		return (out1[0], out2[0]) if len(out1)==1 else (out1, out2)

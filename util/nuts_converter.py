@@ -53,7 +53,9 @@ class NUTSConverter(object):
 		elif lau_name_type == 'NATIONAL':
 			lau_name_column += 'NATIONAL'
 		else:
-			raise ValueError('lau_name_type can only be "LATIN" or "NATIONAL", but is set to: ' + str(lau_name_type))
+			raise ValueError(
+				f'lau_name_type can only be "LATIN" or "NATIONAL", but is set to: {str(lau_name_type)}'
+			)
 
 		municipality2nuts_df = pd.read_excel(eurostat_eu_lau2nuts_path,
 			sheet_name=self.country,
